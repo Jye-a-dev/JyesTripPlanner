@@ -1,10 +1,129 @@
-// src/swagger/docs/users.docs.ts
-
 /**
  * @swagger
  * tags:
  *   name: Users
  *   description: User management APIs
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         full_name:
+ *           type: string
+ *           example: Nguyễn Văn A
+ *         email:
+ *           type: string
+ *           example: user@gmail.com
+ *         avatar_url:
+ *           type: string
+ *           example: https://example.com/avatar.jpg
+ *         role:
+ *           type: string
+ *           enum: [admin, user]
+ *           example: user
+ *         is_active:
+ *           type: boolean
+ *           example: true
+ *         is_banned:
+ *           type: boolean
+ *           example: false
+ *         last_login_at:
+ *           type: string
+ *           format: date-time
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     CreateUserRequest:
+ *       type: object
+ *       required:
+ *         - full_name
+ *         - email
+ *         - password
+ *       properties:
+ *         full_name:
+ *           type: string
+ *           example: admin
+ *         email:
+ *           type: string
+ *           example: admin@gmail.com
+ *         password:
+ *           type: string
+ *           example: "123456"
+ *         avatar_url:
+ *           type: string
+ *           example: https://example.com/avatar.jpg
+ *         role:
+ *           type: string
+ *           enum: [admin, user]
+ *           example: user
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     UpdateUserRequest:
+ *       type: object
+ *       properties:
+ *         full_name:
+ *           type: string
+ *           example: Updated Name
+ *         email:
+ *           type: string
+ *           example: updated@gmail.com
+ *         password:
+ *           type: string
+ *           example: "newpassword123"
+ *         avatar_url:
+ *           type: string
+ *           example: https://example.com/avatar.jpg
+ *         role:
+ *           type: string
+ *           enum: [admin, user]
+ *           example: user
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     UserQuery:
+ *       type: object
+ *       properties:
+ *         page:
+ *           type: integer
+ *           example: 1
+ *         limit:
+ *           type: integer
+ *           example: 10
+ *         search:
+ *           type: string
+ *           example: admin
+ *         role:
+ *           type: string
+ *           enum: [admin, user]
+ *         sort_by:
+ *           type: string
+ *           example: created_at
+ *         sort_order:
+ *           type: string
+ *           enum: [ASC, DESC]
  */
 
 /**
@@ -19,42 +138,24 @@
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/CreateUserRequest'
+ *           example:
+ *             full_name: admin
+ *             email: admin@gmail.com
+ *             password: "123456"
  *     responses:
  *       201:
- *         description: User created successfully
- *
+ *         description: Created
+ */
+
+/**
+ * @swagger
+ * /users:
  *   get:
  *     summary: Get all users
  *     tags: [Users]
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *         example: 1
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *         example: 10
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         example: nguyen
- *       - in: query
- *         name: sort_by
- *         schema:
- *           type: string
- *         example: created_at
- *       - in: query
- *         name: sort_order
- *         schema:
- *           type: string
- *           enum: [ASC, DESC]
  *     responses:
  *       200:
- *         description: Users fetched successfully
+ *         description: Success
  */
 
 /**
@@ -65,9 +166,8 @@
  *     tags: [Users]
  *     responses:
  *       200:
- *         description: Users counted successfully
+ *         description: Success
  */
-
 /**
  * @swagger
  * /users/email/{email}:
@@ -80,12 +180,13 @@
  *         required: true
  *         schema:
  *           type: string
- *         example: user@gmail.com
+ *           example: user@gmail.com
  *     responses:
  *       200:
- *         description: User fetched successfully
+ *         description: Success
+ *       404:
+ *         description: User not found
  */
-
 /**
  * @swagger
  * /users/{id}:
@@ -101,7 +202,7 @@
  *           format: uuid
  *     responses:
  *       200:
- *         description: User fetched successfully
+ *         description: Success
  *
  *   patch:
  *     summary: Update user
@@ -110,12 +211,18 @@
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: string
- *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateUserRequest'
+ *           example:
+ *             full_name: Updated Name
+ *             password: "newpassword123"
  *     responses:
  *       200:
- *         description: User updated successfully
+ *         description: Updated
  *
  *   delete:
  *     summary: Delete user
@@ -124,10 +231,7 @@
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: string
- *           format: uuid
  *     responses:
  *       200:
- *         description: User deleted successfully
+ *         description: Deleted
  */

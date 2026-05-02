@@ -1,80 +1,110 @@
-// src/modules/users/users.service.ts
-
 import usersModel from "./users.models";
-import { ICreateUserPayload, IUpdateUserPayload, IUserQuery } from "./users.type";
+import bcrypt from "bcrypt";
+
+import {
+  ICreateUserPayload,
+  IUpdateUserPayload,
+  IUserQuery,
+  ICreateUserDB,
+  UserRole,
+} from "./users.type";
+
+const SALT_ROUNDS = 10;
+
+const ALLOWED_FIELDS = [
+  "full_name",
+  "email",
+  "password_hash",
+  "avatar_url",
+  "role",
+  "is_active",
+  "is_banned",
+  "last_login_at",
+];
 
 class UsersService {
-	async countAll(query: IUserQuery) {
-		const total = await usersModel.countAll(query);
+  async createUser(payload: ICreateUserPayload) {
+    const email = payload.email.toLowerCase().trim();
 
-		if (total === 0) {
-			throw new Error("Non exist");
-		}
+    const existingUser = await usersModel.findByEmail(email);
+    if (existingUser) throw new Error("Email already exists");
 
-		return total;
-	}
+    const hashed = await bcrypt.hash(payload.password, SALT_ROUNDS);
 
-	async createUser(payload: ICreateUserPayload) {
-		const existingUser = await usersModel.findByEmail(payload.email);
+    const dbPayload: ICreateUserDB = {
+      full_name: payload.full_name,
+      email,
+      password_hash: hashed,
+      avatar_url: payload.avatar_url,
 
-		if (existingUser) {
-			throw new Error("Email already exists");
-		}
+      role: payload.role ?? UserRole.USER,
+      is_active: payload.is_active ?? true,
+      is_banned: payload.is_banned ?? false,
+    };
 
-		return usersModel.create(payload);
-	}
+    const user = await usersModel.create(dbPayload);
+    const { password_hash, ...safeUser } = user;
 
-	async getUsers(query: IUserQuery) {
-		return usersModel.findAll(query);
-	}
+    return safeUser;
+  }
 
-	async getUserById(id: string) {
-		const user = await usersModel.findById(id);
+  async getUsers(query: IUserQuery) {
+    const users = await usersModel.findAll(query);
+    return users.map(({ password_hash, ...u }) => u);
+  }
 
-		if (!user) {
-			throw new Error("User not found");
-		}
+  async getUserById(id: string) {
+    const user = await usersModel.findById(id);
+    if (!user) throw new Error("User not found");
 
-		return user;
-	}
+    const { password_hash, ...safeUser } = user;
+    return safeUser;
+  }
 
-	async getUserByEmail(email: string) {
-		const user = await usersModel.findByEmail(email);
+  async getUserByEmail(email: string) {
+    const user = await usersModel.findByEmail(email);
+    if (!user) throw new Error("User not found");
 
-		if (!user) {
-			throw new Error("User not found");
-		}
+    const { password_hash, ...safeUser } = user;
+    return safeUser;
+  }
 
-		return user;
-	}
+  async updateUser(id: string, payload: IUpdateUserPayload) {
+    const user = await usersModel.findById(id);
+    if (!user) throw new Error("User not found");
 
-	async updateUser(id: string, payload: IUpdateUserPayload) {
-		const user = await usersModel.findById(id);
+    if (payload.email && payload.email !== user.email) {
+      const exists = await usersModel.findByEmail(payload.email);
+      if (exists) throw new Error("Email already exists");
+    }
 
-		if (!user) {
-			throw new Error("User not found");
-		}
+    if (payload.password) {
+      const hashed = await bcrypt.hash(payload.password, SALT_ROUNDS);
+      (payload as any).password_hash = hashed;
+      delete (payload as any).password;
+    }
 
-		if (payload.email && payload.email !== user.email) {
-			const existingUser = await usersModel.findByEmail(payload.email);
+    const cleanPayload = Object.fromEntries(
+      Object.entries(payload).filter(([k]) => ALLOWED_FIELDS.includes(k))
+    );
 
-			if (existingUser) {
-				throw new Error("Email already exists");
-			}
-		}
+    const updated = await usersModel.update(id, cleanPayload);
+    if (!updated) return null;
 
-		return usersModel.update(id, payload);
-	}
+    const { password_hash, ...safeUser } = updated;
+    return safeUser;
+  }
 
-	async deleteUser(id: string) {
-		const user = await usersModel.findById(id);
+  async deleteUser(id: string) {
+    const user = await usersModel.findById(id);
+    if (!user) throw new Error("User not found");
 
-		if (!user) {
-			throw new Error("User not found");
-		}
+    return usersModel.delete(id);
+  }
 
-		return usersModel.delete(id);
-	}
+  async countAll(query: IUserQuery) {
+    return usersModel.countAll(query);
+  }
 }
 
 export default new UsersService();

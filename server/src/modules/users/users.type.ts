@@ -1,61 +1,68 @@
-// src/modules/users/users.type.ts
-
 export enum UserRole {
   ADMIN = "admin",
   USER = "user",
 }
 
-export enum UserStatus {
-  ACTIVE = "active",
-  INACTIVE = "inactive",
-  BANNED = "banned",
-}
-
 export interface IUser {
-  id: string
-  full_name: string
-  email: string
-  password_hash: string
-  avatar_url?: string | null
-  phone?: string | null
-  role: UserRole
-  status: UserStatus
-  is_verified: boolean
-  last_login_at?: Date | null
-  created_at: Date
-  updated_at: Date
+  id: string;
+  full_name: string;
+  email: string;
+  password_hash: string;
+  avatar_url?: string | null;
+
+  role: UserRole;
+  is_active: boolean;
+  is_banned: boolean;
+
+  last_login_at?: Date | null;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface ICreateUserPayload {
-  full_name: string
-  email: string
-  password_hash: string
-  avatar_url?: string
-  phone?: string
-  role?: UserRole
-  status?: UserStatus
-  is_verified?: boolean
+  full_name: string;
+  email: string;
+  password: string;
+  avatar_url?: string;
+
+  role?: UserRole;
+  is_active?: boolean;
+  is_banned?: boolean;
+}
+
+export interface ICreateUserDB {
+  full_name: string;
+  email: string;
+  password_hash: string;
+  avatar_url?: string | null;
+
+  role?: UserRole;
+  is_active?: boolean;
+  is_banned?: boolean;
 }
 
 export interface IUpdateUserPayload {
-  full_name?: string
-  email?: string
-  password_hash?: string
-  avatar_url?: string | null
-  phone?: string | null
-  role?: UserRole
-  status?: UserStatus
-  is_verified?: boolean
-  last_login_at?: Date | null
+  full_name?: string;
+  email?: string;
+  password?: string;
+  avatar_url?: string | null;
+
+  role?: UserRole;
+  is_active?: boolean;
+  is_banned?: boolean;
+
+  last_login_at?: Date | null;
 }
 
 export interface IUserQuery {
-  page?: number
-  limit?: number
-  search?: string
-  role?: UserRole
-  status?: UserStatus
-  is_verified?: boolean
-  sort_by?: string
-  sort_order?: "ASC" | "DESC"
+  page?: number;
+  limit?: number;
+  search?: string;
+
+  role?: UserRole;
+  is_active?: boolean;
+  is_banned?: boolean;
+
+  sort_by?: string;
+  sort_order?: "ASC" | "DESC";
 }
