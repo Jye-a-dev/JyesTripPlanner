@@ -19,6 +19,7 @@ export const env = {
 
 	// PostgreSQL
 	databaseUrl: process.env.DATABASE_URL,
+	authSecret: process.env.AUTH_SECRET ?? "change-me-auth-secret",
 
 	dbHost: process.env.DB_HOST ?? "localhost",
 	dbPort: Number(process.env.DB_PORT ?? 5432),
