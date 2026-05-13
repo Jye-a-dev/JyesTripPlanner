@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-import usersModel from "../users/users.models";
+import usersModel from "../users/users.model";
 import usersService from "../users/users.service";
 import { UserRole } from "../users/users.type";
 import { createAuthToken } from "./auth.token";

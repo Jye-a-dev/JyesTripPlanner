@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import usersModel from "../users/users.models";
+import usersModel from "../users/users.model";
 import { UserRole } from "../users/users.type";
 import { verifyAuthToken } from "./auth.token";
 

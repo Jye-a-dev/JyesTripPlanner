@@ -5,7 +5,7 @@ import notesController from "./notes.controller";
 
 import validateMiddleware from "../../middlewares/validate.middleware";
 
-import { createNoteSchema, updateNoteSchema, noteIdSchema, noteQuerySchema } from "./notes.validators";
+import { createNoteSchema, updateNoteSchema, noteIdSchema, noteQuerySchema } from "./notes.validator";
 
 const router = Router();
 

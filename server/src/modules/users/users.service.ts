@@ -1,4 +1,4 @@
-import usersModel from "./users.models";
+import usersModel from "./users.model";
 import bcrypt from "bcrypt";
 
 import {

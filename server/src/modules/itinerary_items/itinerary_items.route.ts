@@ -1,5 +1,5 @@
 import { Router } from "express";
-import itineraryItemsController from "./itinerary-_items.controller";
+import itineraryItemsController from "./itinerary_items.controller";
 import validateMiddleware from "../../middlewares/validate.middleware";
 
 import {
