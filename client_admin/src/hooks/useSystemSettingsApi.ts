@@ -13,6 +13,7 @@ export function useSystemSettingsApi() {
     create: (payload: unknown) => apiRequest<ApiResponse>("/system_settings", { method: "POST", body: payload }),
     findAll: (query?: QueryParams) => apiRequest<ApiResponse>("/system_settings", { method: "GET", query }),
     countAll: (query?: QueryParams) => apiRequest<ApiResponse>("/system_settings/count", { method: "GET", query }),
+    countByKey: (key: string) => apiRequest<ApiResponse>(`/system_settings/count/key/${encodeURIComponent(key)}`, { method: "GET" }),
     findByKey: (key: string) => apiRequest<ApiResponse>(`/system_settings/key/${encodeURIComponent(key)}`, { method: "GET" }),
     findById: (id: string) => apiRequest<ApiResponse>(`/system_settings/${id}`, { method: "GET" }),
     update: (id: string, payload: unknown) => apiRequest<ApiResponse>(`/system_settings/${id}`, { method: "PATCH", body: payload }),

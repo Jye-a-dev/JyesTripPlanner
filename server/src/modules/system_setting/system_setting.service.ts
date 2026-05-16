@@ -59,6 +59,10 @@ class SystemSettingsService {
 	async countAll(query: ISystemSettingQuery) {
 		return systemSettingsModel.countAll(query);
 	}
+
+  async countByKey(setting_key: string) {
+    return systemSettingsModel.countByKey(setting_key);
+  }
 }
 
 export default new SystemSettingsService();

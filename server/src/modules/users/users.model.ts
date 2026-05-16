@@ -136,6 +136,22 @@ export class UsersModel {
     const res = await pool.query(query, values);
     return res.rows[0]?.total || 0;
   }
+
+  async countByEmail(email: string): Promise<number> {
+    const res = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM ${this.tableName} WHERE email=$1`,
+      [email]
+    );
+    return res.rows[0]?.total || 0;
+  }
+
+  async countByRole(role: "admin" | "user"): Promise<number> {
+    const res = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM ${this.tableName} WHERE role=$1`,
+      [role]
+    );
+    return res.rows[0]?.total || 0;
+  }
 }
 
 export default new UsersModel();

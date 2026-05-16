@@ -1,12 +1,15 @@
+﻿import HeroSection from "./components/HeroSection";
+import InfoCards from "./components/InfoCards";
+import MainActionButtons from "./components/MainActionButtons";
+
 export default function MainpageIndex() {
-    return (
-        <div className="text-black text-center border-2 border-black p-4 rounded-2xl">
-            <p className="scale-[1.2]">
-                Template for react + vite + ts
-            </p>
-            <p className="">
-                Mẫu folder cho react + vite + ts
-            </p>
-        </div>
-    )
+  return (
+    <section className="grid w-full gap-6 md:grid-cols-[1.2fr_0.8fr] md:gap-8">
+      <div>
+        <HeroSection />
+        <MainActionButtons />
+      </div>
+      <InfoCards />
+    </section>
+  );
 }

@@ -1,18 +1,20 @@
 import { Link, NavLink } from "react-router-dom";
 
 const navItems = [
-  { label: "Home", to: "/" },
+  { label: "Trang chủ", to: "/" },
+  { label: "Đăng nhập", to: "/login" },
+  { label: "Quản trị", to: "/admin" },
 ];
 
 export default function BaseNavbar() {
   return (
-    <header className="border-b border-zinc-200 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4">
+    <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/70 backdrop-blur-md">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 md:px-6">
         <Link
           to="/"
-          className="text-lg font-semibold tracking-tight text-zinc-900 transition hover:text-zinc-600"
+          className="text-xl font-extrabold tracking-tight text-slate-900 transition hover:text-teal-700"
         >
-          Template React
+          JyesTrip Planner
         </Link>
 
         <nav className="flex items-center gap-2">
@@ -22,10 +24,10 @@ export default function BaseNavbar() {
               to={item.to}
               className={({ isActive }) =>
                 [
-                  "rounded-full px-4 py-2 text-sm font-medium transition",
+                  "rounded-full px-4 py-2 text-sm font-semibold transition",
                   isActive
-                    ? "bg-zinc-900 text-white"
-                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900",
+                    ? "bg-teal-700 text-white shadow-sm"
+                    : "text-slate-700 hover:bg-teal-50 hover:text-teal-700",
                 ].join(" ")
               }
             >

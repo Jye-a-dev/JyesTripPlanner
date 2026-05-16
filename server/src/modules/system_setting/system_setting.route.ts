@@ -4,7 +4,7 @@ import systemSettingsController from "./system_setting.controller";
 
 import validateMiddleware from "../../middlewares/validate.middleware";
 
-import { createSystemSettingSchema, updateSystemSettingSchema, systemSettingIdSchema, systemSettingQuerySchema } from "./system_setting.validator";
+import { createSystemSettingSchema, updateSystemSettingSchema, systemSettingIdSchema, systemSettingKeySchema, systemSettingQuerySchema } from "./system_setting.validator";
 
 const router = Router();
 
@@ -13,6 +13,8 @@ router.post("/", validateMiddleware(createSystemSettingSchema), systemSettingsCo
 router.get("/", validateMiddleware(systemSettingQuerySchema), systemSettingsController.findAll);
 
 router.get("/count", validateMiddleware(systemSettingQuerySchema), systemSettingsController.countAll);
+
+router.get("/count/key/:key", validateMiddleware(systemSettingKeySchema), systemSettingsController.countByKey);
 
 router.get("/key/:key", systemSettingsController.findByKey);
 

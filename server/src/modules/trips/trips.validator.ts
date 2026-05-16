@@ -61,6 +61,14 @@ export const tripIdSchema = z.object({
 	id: z.string().uuid(),
 });
 
+export const tripUserIdSchema = z.object({
+  user_id: z.string().uuid(),
+});
+
+export const tripStatusSchema = z.object({
+  status: z.enum(["draft", "planning", "active", "completed", "cancelled"]),
+});
+
 // ======================================================
 // QUERY
 // ======================================================

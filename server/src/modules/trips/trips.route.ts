@@ -3,7 +3,7 @@
 import { Router } from "express";
 import tripsController from "./trips.controller";
 import validateMiddleware from "../../middlewares/validate.middleware";
-import { createTripSchema, updateTripSchema, tripIdSchema, tripQuerySchema } from "./trips.validator";
+import { createTripSchema, updateTripSchema, tripIdSchema, tripQuerySchema, tripStatusSchema, tripUserIdSchema } from "./trips.validator";
 
 const router = Router();
 
@@ -12,6 +12,10 @@ router.post("/", validateMiddleware(createTripSchema), tripsController.create);
 router.get("/", validateMiddleware(tripQuerySchema), tripsController.findAll);
 
 router.get("/count", validateMiddleware(tripQuerySchema), tripsController.countAll);
+
+router.get("/count/user/:user_id", validateMiddleware(tripUserIdSchema), tripsController.countByUserId);
+
+router.get("/count/status/:status", validateMiddleware(tripStatusSchema), tripsController.countByStatus);
 
 router.get("/user/:user_id", tripsController.findByUserId);
 

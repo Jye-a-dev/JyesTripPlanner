@@ -1,10 +1,7 @@
+﻿import NotFoundContent from "./components/NotFoundContent";
+
 function NotFound() {
-  return (
-    <section>
-      <h2>404 - Not Found</h2>
-      <p>The page you are looking for does not exist.</p>
-    </section>
-  );
+  return <NotFoundContent title="404 - Không tìm thấy trang" message="Đường dẫn bạn đang truy cập không tồn tại." />;
 }
 
 export default NotFound;

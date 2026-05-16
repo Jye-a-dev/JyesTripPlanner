@@ -198,6 +198,22 @@ export class TripsModel {
 		const result = await pool.query(query, values);
 		return result.rows[0]?.total || 0;
 	}
+
+  async countByUserId(user_id: string): Promise<number> {
+    const result = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM ${this.tableName} WHERE user_id=$1`,
+      [user_id]
+    );
+    return result.rows[0]?.total || 0;
+  }
+
+  async countByStatus(status: string): Promise<number> {
+    const result = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM ${this.tableName} WHERE status=$1`,
+      [status]
+    );
+    return result.rows[0]?.total || 0;
+  }
 }
 
 export default new TripsModel();

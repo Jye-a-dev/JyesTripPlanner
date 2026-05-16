@@ -126,6 +126,14 @@ export class SystemSettingsModel {
 
 		return res.rows[0]?.total || 0;
 	}
+
+  async countByKey(setting_key: string): Promise<number> {
+    const res = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM ${this.tableName} WHERE setting_key=$1`,
+      [setting_key]
+    );
+    return res.rows[0]?.total || 0;
+  }
 }
 
 export default new SystemSettingsModel();

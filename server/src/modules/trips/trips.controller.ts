@@ -48,6 +48,34 @@ class TripsController {
     }
   }
 
+  async countByUserId(req: Request, res: Response, next: NextFunction) {
+    try {
+      const total = await tripsService.countByUserId(String(req.params.user_id));
+
+      return res.status(200).json({
+        success: true,
+        message: "Trips counted by user successfully",
+        data: { total },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async countByStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const total = await tripsService.countByStatus(String(req.params.status));
+
+      return res.status(200).json({
+        success: true,
+        message: "Trips counted by status successfully",
+        data: { total },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async findById(req: Request, res: Response, next: NextFunction) {
     try {
       const trip = await tripsService.getTripById(String(req.params.id));

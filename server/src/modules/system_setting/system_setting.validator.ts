@@ -30,6 +30,10 @@ export const systemSettingIdSchema = z.object({
 	id: z.string().uuid(),
 });
 
+export const systemSettingKeySchema = z.object({
+  key: z.string().min(1).max(150),
+});
+
 export const systemSettingQuerySchema = z.object({
 	page: z.coerce.number().min(1).optional(),
 	limit: z.coerce.number().min(1).max(100).optional(),

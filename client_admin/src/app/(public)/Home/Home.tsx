@@ -1,9 +1,10 @@
-import MainpageIndex from "../../../components/pages/MainPage/Index";
+﻿import MainpageIndex from "../../../components/pages/MainPage/Index";
+import HomeContainer from "./components/HomeContainer";
 
-export default function Mainpage() {
-    return (
-       <>
-       <MainpageIndex/>
-       </>
-    )
+export default function HomePage() {
+  return (
+    <HomeContainer>
+      <MainpageIndex />
+    </HomeContainer>
+  );
 }

@@ -1,4 +1,4 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:3000/api/v1";
+﻿const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "/api/v1";
 
 type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
@@ -12,7 +12,9 @@ type RequestOptions = {
 function buildUrl(path: string, query?: RequestOptions["query"]) {
   const normalizedBase = API_BASE_URL.replace(/\/$/, "");
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const url = new URL(`${normalizedBase}${normalizedPath}`);
+  const fullPath = `${normalizedBase}${normalizedPath}`;
+  const isAbsolute = /^https?:\/\//i.test(fullPath);
+  const url = isAbsolute ? new URL(fullPath) : new URL(fullPath, window.location.origin);
 
   if (query) {
     Object.entries(query).forEach(([key, value]) => {
@@ -37,12 +39,17 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(buildUrl(path, query), {
-    method,
-    headers,
-    credentials: "include",
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildUrl(path, query), {
+      method,
+      headers,
+      credentials: "include",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new Error("Không thể kết nối máy chủ. Vui lòng kiểm tra backend đang chạy.");
+  }
 
   const data = (await response.json().catch(() => null)) as T | { message?: string } | null;
 

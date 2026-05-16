@@ -34,6 +34,14 @@ export const userIdSchema = z.object({
 	id: z.string().uuid(),
 });
 
+export const userEmailSchema = z.object({
+  email: z.string().email(),
+});
+
+export const userRoleSchema = z.object({
+  role: z.enum(["admin", "user"]),
+});
+
 export const userQuerySchema = z.object({
   page: z.coerce.number().min(1).optional(),
   limit: z.coerce.number().min(1).max(100).optional(),

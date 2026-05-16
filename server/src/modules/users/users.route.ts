@@ -3,7 +3,7 @@
 import { Router } from "express";
 import usersController from "./users.controller";
 import validateMiddleware from "../../middlewares/validate.middleware";
-import { createUserSchema, updateUserSchema, userIdSchema, userQuerySchema } from "./users.validator";
+import { createUserSchema, updateUserSchema, userEmailSchema, userIdSchema, userQuerySchema, userRoleSchema } from "./users.validator";
 
 const router = Router();
 
@@ -12,6 +12,10 @@ router.post("/", validateMiddleware(createUserSchema), usersController.create);
 router.get("/", validateMiddleware(userQuerySchema), usersController.findAll);
 
 router.get("/count", validateMiddleware(userQuerySchema), usersController.countAll);
+
+router.get("/count/email/:email", validateMiddleware(userEmailSchema), usersController.countByEmail);
+
+router.get("/count/role/:role", validateMiddleware(userRoleSchema), usersController.countByRole);
 
 router.get("/email/:email", usersController.findByEmail);
 

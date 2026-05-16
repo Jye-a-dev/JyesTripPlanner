@@ -105,6 +105,14 @@ class UsersService {
   async countAll(query: IUserQuery) {
     return usersModel.countAll(query);
   }
+
+  async countByEmail(email: string) {
+    return usersModel.countByEmail(email.toLowerCase().trim());
+  }
+
+  async countByRole(role: UserRole) {
+    return usersModel.countByRole(role);
+  }
 }
 
 export default new UsersService();

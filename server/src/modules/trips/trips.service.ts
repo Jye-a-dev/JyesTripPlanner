@@ -5,14 +5,16 @@ import { ICreateTripPayload, IUpdateTripPayload, ITripQuery } from "./trips.type
 
 class TripsService {
 	async countAll(query: ITripQuery) {
-		const total = await tripsModel.countAll(query);
-
-		if (total === 0) {
-			throw new Error("Non exist");
-		}
-
-		return total;
+		return tripsModel.countAll(query);
 	}
+
+  async countByUserId(user_id: string) {
+    return tripsModel.countByUserId(user_id);
+  }
+
+  async countByStatus(status: string) {
+    return tripsModel.countByStatus(status);
+  }
 
 	async createTrip(payload: ICreateTripPayload) {
 		return tripsModel.create(payload);

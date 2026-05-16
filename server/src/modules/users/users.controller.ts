@@ -2,6 +2,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import usersService from "./users.service";
+import { UserRole } from "./users.type";
 
 class UsersController {
 	async create(req: Request, res: Response, next: NextFunction) {
@@ -47,6 +48,34 @@ class UsersController {
 			next(error);
 		}
 	}
+
+  async countByEmail(req: Request, res: Response, next: NextFunction) {
+    try {
+      const total = await usersService.countByEmail(String(req.params.email));
+
+      return res.status(200).json({
+        success: true,
+        message: "Users counted by email successfully",
+        data: { total },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async countByRole(req: Request, res: Response, next: NextFunction) {
+    try {
+      const total = await usersService.countByRole(req.params.role as UserRole);
+
+      return res.status(200).json({
+        success: true,
+        message: "Users counted by role successfully",
+        data: { total },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 
 	async findById(req: Request, res: Response, next: NextFunction) {
 		try {

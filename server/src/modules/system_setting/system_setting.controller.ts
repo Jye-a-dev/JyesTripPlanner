@@ -44,6 +44,20 @@ class SystemSettingsController {
 		}
 	}
 
+  async countByKey(req: Request, res: Response, next: NextFunction) {
+    try {
+      const total = await systemSettingsService.countByKey(String(req.params.key));
+
+      return res.status(200).json({
+        success: true,
+        message: "System settings counted by key successfully",
+        data: { total },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
 	async findById(req: Request, res: Response, next: NextFunction) {
 		try {
 			const setting = await systemSettingsService.getSystemSettingById(
