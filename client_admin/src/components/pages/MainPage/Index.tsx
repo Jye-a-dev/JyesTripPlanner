@@ -1,6 +1,6 @@
-﻿import HeroSection from "./components/HeroSection";
-import InfoCards from "./components/InfoCards";
-import MainActionButtons from "./components/MainActionButtons";
+﻿import HeroSection from "./ui/HeroSection";
+import InfoCards from "./ui/InfoCards";
+import MainActionButtons from "./ui/MainActionButtons";
 
 export default function MainpageIndex() {
   return (
@@ -13,3 +13,4 @@ export default function MainpageIndex() {
     </section>
   );
 }
+

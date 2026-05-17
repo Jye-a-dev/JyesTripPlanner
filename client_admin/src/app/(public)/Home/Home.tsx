@@ -1,5 +1,5 @@
 ﻿import MainpageIndex from "../../../components/pages/MainPage/Index";
-import HomeContainer from "./components/HomeContainer";
+import HomeContainer from "../../../components/pages/PublicHome/ui/HomeContainer";
 
 export default function HomePage() {
   return (
@@ -8,3 +8,6 @@ export default function HomePage() {
     </HomeContainer>
   );
 }
+
+
+

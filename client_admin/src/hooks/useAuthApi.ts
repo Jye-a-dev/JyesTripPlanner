@@ -1,3 +1,4 @@
+﻿import { useMemo } from "react";
 import { apiRequest } from "./apiClient";
 
 type ApiResponse<T = unknown> = {
@@ -7,10 +8,11 @@ type ApiResponse<T = unknown> = {
 };
 
 export function useAuthApi() {
-  return {
+  return useMemo(() => ({
     register: (payload: unknown) => apiRequest<ApiResponse>("/auth/register", { method: "POST", body: payload }),
     login: (payload: unknown) => apiRequest<ApiResponse>("/auth/login", { method: "POST", body: payload }),
     logout: () => apiRequest<ApiResponse>("/auth/logout", { method: "POST" }),
     me: (token?: string) => apiRequest<ApiResponse>("/auth/me", { method: "GET", token }),
-  };
+  }), []);
 }
+
