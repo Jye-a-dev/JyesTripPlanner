@@ -1,7 +1,7 @@
 ﻿import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthApi } from "../../../../hooks";
+import { useAuthApi } from "../../../../shared/hooks";
 import LoginFormCard from "../ui/LoginFormCard";
 import LoginIntro from "../ui/LoginIntro";
 import type { LoginResponse } from "../ui/LoginIntro";
@@ -55,4 +55,9 @@ export default function LoginPageView() {
     </section>
   );
 }
+
+
+
+
+
 

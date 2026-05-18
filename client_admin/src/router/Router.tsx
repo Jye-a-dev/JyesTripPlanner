@@ -1,9 +1,9 @@
-﻿import PublicLayout from "../components/layouts/(public)/PublicLayout";
+﻿import PublicLayout from "../shared/layouts/(public)/PublicLayout";
 
 import Home from "../app/(public)/Home/Home";
 import LoginPage from "../app/(public)/Auth/LoginPage";
 import ProtectedRoute from "../components/pages/ProtectedRoute";
-import { AdminDashboardLayout } from "../components/pages/Admin/ui";
+import { AdminDashboardLayout } from "../features/admin/components";
 import {
   AdminHomePage,
   ModerationCrudPage,
@@ -19,7 +19,7 @@ import {
   UserDetailPage,
   UserEditPage,
   UsersListPage,
-} from "../app/(user)/Dashboard/admin/pages";
+} from "../features/admin/pages";
 
 const routes = [
   {
@@ -58,3 +58,5 @@ const routes = [
 ];
 
 export default routes;
+
+

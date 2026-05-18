@@ -11,8 +11,8 @@ import {
   useUserBansApi,
   useUserReportsApi,
   useUsersApi,
-} from "../../../../hooks";
-import { AdminModuleCrudSection } from "../../Admin/ui";
+} from "../../../../shared/hooks";
+import { AdminModuleCrudSection } from "../../../../features/admin/components";
 import DashboardHeader from "../ui/DashboardHeader";
 
 export default function AdminDashboardPageView() {
@@ -63,4 +63,8 @@ export default function AdminDashboardPageView() {
     </main>
   );
 }
+
+
+
+
 

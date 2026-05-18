@@ -1,4 +1,4 @@
-type InfoCard = {
+﻿type InfoCard = {
   title: string;
   headline: string;
   description: string;
@@ -46,3 +46,4 @@ export default function InfoCards() {
     </aside>
   );
 }
+

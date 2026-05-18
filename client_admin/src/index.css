@@ -100,3 +100,35 @@ input,
 select {
   font: inherit;
 }
+
+.rich-text-editor:empty::before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+}
+
+.rich-text-editor:focus {
+  outline: 2px solid rgba(15, 118, 110, 0.28);
+  outline-offset: 1px;
+}
+
+.word-like-content {
+  line-height: 1.7;
+  color: #0f172a;
+}
+
+.word-like-content p {
+  margin: 0 0 10px;
+}
+
+.word-like-content ul,
+.word-like-content ol {
+  margin: 8px 0 10px 20px;
+}
+
+.word-like-content h1,
+.word-like-content h2,
+.word-like-content h3 {
+  margin: 10px 0 6px;
+  font-family: var(--heading);
+}
+

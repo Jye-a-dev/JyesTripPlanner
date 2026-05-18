@@ -19,3 +19,4 @@ export default function DashboardHeader({ onLogout }: DashboardHeaderProps) {
     </header>
   );
 }
+

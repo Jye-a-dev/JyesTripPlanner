@@ -20,3 +20,5 @@ export default function LoginIntro({ title, description }: LoginIntroProps) {
     </article>
   );
 }
+
+
