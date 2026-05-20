@@ -2,6 +2,8 @@
 import type { FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import RichTextEditor from "../../../shared/components/RichTextEditor";
+import { useTripsApi } from "../../../shared/hooks/useTripsApi";
+import { useUsersApi } from "../../../shared/hooks/useUsersApi";
 import { isRichTextField, toEditorValue } from "../../../shared/utils/richText";
 
 type QueryParams = Record<string, string | number | boolean | null | undefined>;
@@ -18,11 +20,18 @@ type ApiResponse<T = unknown> = {
   data?: T;
 };
 
+type SelectOption = {
+  value: string;
+  label: string;
+};
+
+const fkFields = new Set(["user_id", "reporter_user_id", "target_user_id", "trip_id"]);
+
 const viLabels: Record<string, string> = {
   id: "Mã",
-  user_id: "Mã người dùng",
-  reporter_user_id: "Mã người báo cáo",
-  target_user_id: "Mã người bị báo cáo",
+  user_id: "Tên người dùng",
+  reporter_user_id: "Tên người báo cáo",
+  target_user_id: "Tên người bị báo cáo",
   trip_id: "Mã hành trình",
   full_name: "Họ và tên",
   email: "Email",
@@ -49,8 +58,48 @@ const viLabels: Record<string, string> = {
   updated_at: "Ngày cập nhật",
 };
 
+const enumOptions: Record<string, SelectOption[]> = {
+  role: [
+    { value: "user", label: "Người dùng" },
+    { value: "admin", label: "Quản trị" },
+  ],
+  is_active: [
+    { value: "true", label: "Hoạt động" },
+    { value: "false", label: "Ngưng hoạt động" },
+  ],
+  is_banned: [
+    { value: "false", label: "Không bị cấm" },
+    { value: "true", label: "Bị cấm" },
+  ],
+  status: [
+    { value: "draft", label: "Nháp" },
+    { value: "planning", label: "Đang lên kế hoạch" },
+    { value: "active", label: "Đang diễn ra" },
+    { value: "completed", label: "Hoàn thành" },
+    { value: "cancelled", label: "Đã hủy" },
+  ],
+  type: [
+    { value: "restaurant", label: "Nhà hàng" },
+    { value: "hotel", label: "Khách sạn" },
+    { value: "attraction", label: "Điểm tham quan" },
+    { value: "transport", label: "Di chuyển" },
+    { value: "shopping", label: "Mua sắm" },
+    { value: "other", label: "Khác" },
+  ],
+  currency: [
+    { value: "VND", label: "VND" },
+    { value: "USD", label: "USD" },
+    { value: "EUR", label: "EUR" },
+    { value: "JPY", label: "JPY" },
+  ],
+};
+
 function toViLabel(key: string) {
   return viLabels[key] ?? key.replaceAll("_", " ");
+}
+
+function isFkField(key: string) {
+  return fkFields.has(key);
 }
 
 function castValue(input: string): string | number | boolean | null {
@@ -88,8 +137,11 @@ export default function AdminModuleRecordEditPage({
 }) {
   const { module = "", id = "" } = useParams();
   const navigate = useNavigate();
+  const usersApi = useUsersApi();
+  const tripsApi = useTripsApi();
   const [values, setValues] = useState<Record<string, string>>({});
   const [allKeys, setAllKeys] = useState<string[]>([]);
+  const [fkOptions, setFkOptions] = useState<Record<string, SelectOption[]>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -111,7 +163,7 @@ export default function AdminModuleRecordEditPage({
         }
 
         if (!record) {
-          const listRes = await selectedModule.api.findAll({ page: 1, limit: 200, search: id });
+          const listRes = await selectedModule.api.findAll({ page: 1, limit: 100, search: id });
           record = pickRowById(extractDataArray(listRes), id);
         }
 
@@ -135,6 +187,61 @@ export default function AdminModuleRecordEditPage({
 
     void load();
   }, [id, selectedModule]);
+
+  useEffect(() => {
+    const loadSelectOptions = async () => {
+      const keySet = new Set(allKeys);
+      const nextOptions: Record<string, SelectOption[]> = {};
+
+      try {
+        if (keySet.has("user_id") || keySet.has("reporter_user_id") || keySet.has("target_user_id")) {
+          const users = extractDataArray(await usersApi.findAll({ page: 1, limit: 100 }));
+          const userOptions = users.map((user) => ({
+            value: String(user.id ?? ""),
+            label: `${String(user.full_name ?? "Không tên")} (${String(user.email ?? "")})`,
+          }));
+          if (keySet.has("user_id")) nextOptions.user_id = userOptions;
+          if (keySet.has("reporter_user_id")) nextOptions.reporter_user_id = userOptions;
+          if (keySet.has("target_user_id")) nextOptions.target_user_id = userOptions;
+
+          // Fallback: keep current value selectable even when list API returns empty.
+          if (keySet.has("user_id") && values.user_id && !userOptions.some((option) => option.value === values.user_id)) {
+            try {
+              const userRes = await usersApi.findById?.(values.user_id);
+              const user = (userRes as ApiResponse<Record<string, unknown>>)?.data;
+              if (user) {
+                nextOptions.user_id = [
+                  {
+                    value: String(user.id ?? values.user_id),
+                    label: `${String(user.full_name ?? "Không tên")} (${String(user.email ?? "")})`,
+                  },
+                  ...(nextOptions.user_id ?? []),
+                ];
+              }
+            } catch {
+              nextOptions.user_id = [{ value: values.user_id, label: `User hiện tại (${values.user_id})` }, ...(nextOptions.user_id ?? [])];
+            }
+          }
+        }
+
+        if (keySet.has("trip_id")) {
+          const trips = extractDataArray(await tripsApi.findAll({ page: 1, limit: 100 }));
+          nextOptions.trip_id = trips.map((trip) => ({
+            value: String(trip.id ?? ""),
+            label: `${String(trip.title ?? "Không tiêu đề")} - ${String(trip.destination ?? "")}`,
+          }));
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Không tải được danh sách dropdown");
+      }
+
+      setFkOptions(nextOptions);
+    };
+
+    if (allKeys.length > 0) {
+      void loadSelectOptions();
+    }
+  }, [allKeys, tripsApi, usersApi]);
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -171,7 +278,29 @@ export default function AdminModuleRecordEditPage({
         {allKeys.map((key) => (
           <label key={key} className="grid gap-1 text-sm font-semibold text-slate-700">
             {toViLabel(key)}
-            {isRichTextField(key) ? (
+            {enumOptions[key]?.length ? (
+              <select
+                value={values[key] ?? ""}
+                onChange={(e) => setValues((prev) => ({ ...prev, [key]: e.target.value }))}
+                className="rounded-lg border border-slate-300 px-3 py-2"
+              >
+                <option value="">Chọn {toViLabel(key).toLowerCase()}</option>
+                {enumOptions[key].map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            ) : isFkField(key) ? (
+              <select
+                value={values[key] ?? ""}
+                onChange={(e) => setValues((prev) => ({ ...prev, [key]: e.target.value }))}
+                className="rounded-lg border border-slate-300 px-3 py-2"
+              >
+                <option value="">{fkOptions[key]?.length ? `Chọn ${toViLabel(key).toLowerCase()}` : "Không có dữ liệu để chọn"}</option>
+                {(fkOptions[key] ?? []).map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            ) : isRichTextField(key) ? (
               <RichTextEditor
                 value={toEditorValue(values[key] ?? "", key)}
                 placeholder={`Nhập ${toViLabel(key).toLowerCase()}`}

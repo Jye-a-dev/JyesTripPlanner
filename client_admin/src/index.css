@@ -111,6 +111,29 @@ select {
   outline-offset: 1px;
 }
 
+.rich-text-editor {
+  line-height: 1.65;
+  resize: vertical;
+  overflow: auto;
+}
+
+.rich-text-editor h2,
+.rich-text-editor h3 {
+  margin: 12px 0 8px;
+  font-family: var(--heading);
+}
+
+.rich-text-editor p {
+  margin: 0 0 8px;
+}
+
+.rich-text-editor blockquote {
+  margin: 8px 0;
+  padding-left: 12px;
+  border-left: 3px solid #94a3b8;
+  color: #334155;
+}
+
 .word-like-content {
   line-height: 1.7;
   color: #0f172a;

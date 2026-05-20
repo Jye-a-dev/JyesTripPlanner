@@ -1,5 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useTripsApi } from "../../../shared/hooks/useTripsApi";
+import { useUsersApi } from "../../../shared/hooks/useUsersApi";
 import { isRichTextField, looksLikeHtml, sanitizeRichTextHtml } from "../../../shared/utils/richText";
 
 type QueryParams = Record<string, string | number | boolean | null | undefined>;
@@ -66,6 +68,18 @@ function pickRowById(rows: Record<string, unknown>[], id: string) {
   }) ?? null;
 }
 
+function resolveUserDetailLabel(
+  row: Record<string, unknown>,
+  key: string,
+  textValue: string,
+  fkLabelMaps: Record<string, Map<string, string>>,
+): string | undefined {
+  if (key === "user_name") return fkLabelMaps.user_id?.get(textValue) ?? fkLabelMaps.user_id?.get(String(row.user_id ?? ""));
+  if (key === "reporter_user_name") return fkLabelMaps.reporter_user_id?.get(textValue) ?? fkLabelMaps.reporter_user_id?.get(String(row.reporter_user_id ?? ""));
+  if (key === "target_user_name") return fkLabelMaps.target_user_id?.get(textValue) ?? fkLabelMaps.target_user_id?.get(String(row.target_user_id ?? ""));
+  return undefined;
+}
+
 export default function AdminModuleRecordDetailPage({
   sectionTitle,
   basePath,
@@ -77,11 +91,58 @@ export default function AdminModuleRecordDetailPage({
 }) {
   const { module = "", id = "" } = useParams();
   const navigate = useNavigate();
+  const usersApi = useUsersApi();
+  const tripsApi = useTripsApi();
   const [row, setRow] = useState<Record<string, unknown> | null>(null);
+  const [fkLabelMaps, setFkLabelMaps] = useState<Record<string, Map<string, string>>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const selectedModule = useMemo(() => modules.find((item) => item.key === module), [module, modules]);
+
+  useEffect(() => {
+    const loadFkLabels = async () => {
+      const nextMaps: Record<string, Map<string, string>> = {};
+      try {
+        const users = extractDataArray(await usersApi.findAll({ page: 1, limit: 100 }));
+        const userMap = new Map(users.map((user) => [String(user.id ?? ""), `${String(user.full_name ?? "Không tên")} (${String(user.email ?? "")})`]));
+
+        const userIdsFromRow = new Set<string>();
+        if (row) {
+          const userKeys = ["user_id", "reporter_user_id", "target_user_id", "user_name", "reporter_user_name", "target_user_name"];
+          for (const userKey of userKeys) {
+            const rawId = String(row[userKey] ?? "").trim();
+            if (rawId && !userMap.has(rawId)) userIdsFromRow.add(rawId);
+          }
+        }
+        for (const userId of userIdsFromRow) {
+          try {
+            const userRes = await usersApi.findById?.(userId);
+            const user = (userRes as ApiResponse<Record<string, unknown>>)?.data;
+            if (!user) continue;
+            userMap.set(
+              String(user.id ?? userId),
+              `${String(user.full_name ?? "Không tên")} (${String(user.email ?? "")})`,
+            );
+          } catch {
+            // ignore missing ids
+          }
+        }
+
+        nextMaps.user_id = userMap;
+        nextMaps.reporter_user_id = userMap;
+        nextMaps.target_user_id = userMap;
+
+        const trips = extractDataArray(await tripsApi.findAll({ page: 1, limit: 100 }));
+        nextMaps.trip_id = new Map(trips.map((trip) => [String(trip.id ?? ""), `${String(trip.title ?? "Không tiêu đề")} - ${String(trip.destination ?? "")}`]));
+      } catch {
+        // ignore
+      }
+      setFkLabelMaps(nextMaps);
+    };
+
+    void loadFkLabels();
+  }, [row, tripsApi, usersApi]);
 
   useEffect(() => {
     const load = async () => {
@@ -98,7 +159,7 @@ export default function AdminModuleRecordDetailPage({
         }
 
         if (!record) {
-          const listRes = await selectedModule.api.findAll({ page: 1, limit: 200, search: id });
+          const listRes = await selectedModule.api.findAll({ page: 1, limit: 100, search: id });
           record = pickRowById(extractDataArray(listRes), id);
         }
 
@@ -132,6 +193,7 @@ export default function AdminModuleRecordDetailPage({
           <tbody>
             {Object.entries(row).map(([key, value]) => {
               const textValue = String(value ?? "");
+              const fkLabel = fkLabelMaps[key]?.get(textValue) ?? resolveUserDetailLabel(row, key, textValue, fkLabelMaps);
               const shouldRenderHtml = isRichTextField(key) || looksLikeHtml(textValue);
               return (
                 <tr key={key} className="border-b border-slate-100 last:border-b-0">
@@ -140,7 +202,7 @@ export default function AdminModuleRecordDetailPage({
                     {shouldRenderHtml ? (
                       <div className="word-like-content" dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(textValue) }} />
                     ) : (
-                      textValue
+                      fkLabel ? `${textValue} - ${fkLabel}` : textValue
                     )}
                   </td>
                 </tr>

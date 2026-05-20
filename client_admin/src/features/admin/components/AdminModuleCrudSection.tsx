@@ -1,7 +1,9 @@
 ﻿/* eslint-disable react-refresh/only-export-components */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { useNavigate } from "react-router-dom";
 import RichTextEditor from "../../../shared/components/RichTextEditor";
+import { useTripsApi } from "../../../shared/hooks/useTripsApi";
+import { useUsersApi } from "../../../shared/hooks/useUsersApi";
 import { isRichTextField, looksLikeHtml, toEditorValue, toPlainText } from "../../../shared/utils/richText";
 
 type QueryParams = Record<string, string | number | boolean | null | undefined>;
@@ -52,7 +54,7 @@ export const moduleFields: Record<string, FieldDef[]> = {
     { name: "role", label: "Vai trò", options: [{ value: "user", label: "Người dùng" }, { value: "admin", label: "Quản trị" }] },
   ],
   trips: [
-    { name: "user_id", label: "Mã người dùng" },
+    { name: "user_id", label: "Tên người dùng" },
     { name: "title", label: "Tên hành trình" },
     { name: "destination", label: "Điểm đến" },
     { name: "start_date", label: "Ngày bắt đầu", type: "date" },
@@ -65,8 +67,8 @@ export const moduleFields: Record<string, FieldDef[]> = {
   itinerary_items: [{ name: "trip_id", label: "Mã hành trình" }, { name: "title", label: "Tên hoạt động" }, { name: "note", label: "Ghi chú" }],
   notes: [{ name: "trip_id", label: "Mã hành trình" }, { name: "title", label: "Tiêu đề" }, { name: "content", label: "Nội dung" }],
   expenses: [{ name: "trip_id", label: "Mã hành trình" }, { name: "title", label: "Tên khoản chi" }, { name: "amount", label: "Số tiền", type: "number" }],
-  user_bans: [{ name: "user_id", label: "Mã người dùng" }, { name: "reason", label: "Lý do" }],
-  user_reports: [{ name: "reporter_user_id", label: "Mã người báo" }, { name: "target_user_id", label: "Mã người bị báo" }, { name: "reason", label: "Lý do" }],
+  user_bans: [{ name: "user_id", label: "Tên người dùng" }, { name: "reason", label: "Lý do" }],
+  user_reports: [{ name: "reporter_user_id", label: "Tên người báo" }, { name: "target_user_id", label: "Tên người bị báo" }, { name: "reason", label: "Lý do" }],
   system_settings: [{ name: "setting_key", label: "Tên cài đặt" }, { name: "setting_value", label: "Giá trị" }],
   system_log: [{ name: "action", label: "Hành động" }, { name: "entity_type", label: "Loại dữ liệu" }],
 };
@@ -93,6 +95,34 @@ function extractDataArray(response: unknown): Record<string, unknown>[] {
 function extractTotal(response: unknown): number {
   const total = (response as ApiResponse<{ total?: number }>)?.data?.total;
   return typeof total === "number" ? total : 0;
+}
+
+function getTableHeader(col: string) {
+  if (col === "user_id") return "user_name";
+  if (col === "reporter_user_id") return "reporter_user_name";
+  if (col === "target_user_id") return "target_user_name";
+  return col;
+}
+
+function resolveUserDisplay(
+  row: Record<string, unknown>,
+  col: string,
+  fkLabelMaps: Record<string, Map<string, string>>,
+): string | undefined {
+  const raw = String(row[col] ?? "");
+  if (!raw) return undefined;
+
+  if (col === "user_name") {
+    return fkLabelMaps.user_id?.get(raw) ?? fkLabelMaps.user_id?.get(String(row.user_id ?? "")) ?? undefined;
+  }
+  if (col === "reporter_user_name") {
+    return fkLabelMaps.reporter_user_id?.get(raw) ?? fkLabelMaps.reporter_user_id?.get(String(row.reporter_user_id ?? "")) ?? undefined;
+  }
+  if (col === "target_user_name") {
+    return fkLabelMaps.target_user_id?.get(raw) ?? fkLabelMaps.target_user_id?.get(String(row.target_user_id ?? "")) ?? undefined;
+  }
+
+  return undefined;
 }
 
 function DataForm({ fields, values, fkOptions, onChange }: { fields: FieldDef[]; values: Record<string, string>; fkOptions: Record<string, SelectOption[]>; onChange: (name: string, value: string) => void; }) {
@@ -128,6 +158,200 @@ function DataForm({ fields, values, fkOptions, onChange }: { fields: FieldDef[];
   );
 }
 
+type ModuleToolbarProps = {
+  modules: ModuleItem[];
+  moduleKey: string;
+  setModuleKey: (value: string) => void;
+  searchText: string;
+  setSearchText: (value: string) => void;
+  limit: number;
+  setLimit: (value: number) => void;
+  setPage: (value: number | ((prev: number) => number)) => void;
+  setActivePanel: (panel: CrudPanel) => void;
+  setResultText: (text: string) => void;
+  resetPanelValues: () => void;
+  loadList: () => Promise<void>;
+  readLoading: boolean;
+  showCrudForms: boolean;
+};
+
+function ModuleToolbar({
+  modules,
+  moduleKey,
+  setModuleKey,
+  searchText,
+  setSearchText,
+  limit,
+  setLimit,
+  setPage,
+  setActivePanel,
+  setResultText,
+  resetPanelValues,
+  loadList,
+  readLoading,
+  showCrudForms,
+}: ModuleToolbarProps) {
+  return (
+    <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2 lg:grid-cols-6">
+      <select value={moduleKey} onChange={(e) => { setModuleKey(e.target.value); setPage(1); setActivePanel(null); resetPanelValues(); }} className="rounded-lg border border-slate-300 px-3 py-2 lg:col-span-2">
+        {modules.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
+      </select>
+      <input value={searchText} onChange={(e) => { setSearchText(e.target.value); setPage(1); }} placeholder="Tìm kiếm dữ liệu" className="rounded-lg border border-slate-300 px-3 py-2 lg:col-span-2" />
+      <select value={limit} onChange={(e) => { setLimit(Math.max(1, Number(e.target.value) || 10)); setPage(1); }} className="rounded-lg border border-slate-300 px-3 py-2">
+        <option value={10}>10 / trang</option><option value={20}>20 / trang</option><option value={50}>50 / trang</option>
+      </select>
+      <button onClick={() => void loadList()} disabled={readLoading} className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white">{readLoading ? "Đang tải..." : "Làm mới"}</button>
+      {showCrudForms ? (
+        <button onClick={() => { setActivePanel("create"); setResultText("Sẵn sàng thao tác"); }} className="rounded-lg bg-teal-700 px-3 py-2 text-sm font-semibold text-white">+ Tạo mới</button>
+      ) : null}
+    </div>
+  );
+}
+
+type ModuleDataTableProps = {
+  rows: Record<string, unknown>[];
+  tableCols: string[];
+  fkLabelMaps: Record<string, Map<string, string>>;
+  basePath?: string;
+  moduleKey: string;
+  navigate: ReturnType<typeof useNavigate>;
+  applyRow: (row: Record<string, unknown>) => void;
+  setActivePanel: (panel: CrudPanel) => void;
+  setResultText: (text: string) => void;
+  setDetailId: (id: string) => void;
+  setDeleteId: (id: string) => void;
+};
+
+function ModuleDataTable({
+  rows,
+  tableCols,
+  fkLabelMaps,
+  basePath,
+  moduleKey,
+  navigate,
+  applyRow,
+  setActivePanel,
+  setResultText,
+  setDetailId,
+  setDeleteId,
+}: ModuleDataTableProps) {
+  return (
+    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+      <table className="min-w-full text-sm">
+        <thead className="bg-slate-100 text-left text-slate-700"><tr>{tableCols.map((col) => <th key={col} className="px-4 py-3">{getTableHeader(col)}</th>)}<th className="px-4 py-3">Thao tác</th></tr></thead>
+        <tbody>
+          {rows.length === 0 ? <tr><td colSpan={tableCols.length + 1} className="px-4 py-8 text-center text-slate-500">Không có dữ liệu</td></tr> : rows.map((row, idx) => (
+            <tr key={idx} className="border-t border-slate-200">{tableCols.map((col) => {
+              const rawValue = String(row[col] ?? "");
+              const fkLabel = fkLabelMaps[col]?.get(rawValue) ?? resolveUserDisplay(row, col, fkLabelMaps);
+              const displayValue = fkLabel ?? (looksLikeHtml(rawValue) ? toPlainText(rawValue) : rawValue);
+              return <td key={col} className="px-4 py-3">{displayValue}</td>;
+            })}<td className="px-4 py-3"><div className="flex gap-2"><button onClick={() => { const id = String(row.id ?? ""); if (!id) return; if (basePath) { navigate(`${basePath}/${moduleKey}/${id}/edit`); return; } applyRow(row); setActivePanel("update"); setResultText("Sẵn sàng thao tác"); }} className="rounded border border-slate-300 px-2 py-1">Sửa</button><button onClick={() => { const id = String(row.id ?? ""); if (!id) return; if (basePath) { navigate(`${basePath}/${moduleKey}/${id}`); return; } setDetailId(id); setActivePanel("detail"); setResultText("Sẵn sàng thao tác"); }} className="rounded border border-slate-300 px-2 py-1">Xem</button><button onClick={() => { setDeleteId(String(row.id ?? "")); setActivePanel("delete"); setResultText("Sẵn sàng thao tác"); }} className="rounded border border-rose-300 px-2 py-1 text-rose-700">Xóa</button></div></td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PaginationBar({ total, page, limit, totalPages, setPage }: { total: number; page: number; limit: number; totalPages: number; setPage: (value: number | ((prev: number) => number)) => void; }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm">
+      <p>Hiển thị {total === 0 ? 0 : (page - 1) * limit + 1}-{total === 0 ? 0 : Math.min(page * limit, total)} trên tổng {total}</p>
+      <div className="flex items-center gap-2"><button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="rounded border border-slate-300 px-3 py-1 disabled:opacity-40">Trước</button><span>{page}/{totalPages}</span><button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="rounded border border-slate-300 px-3 py-1 disabled:opacity-40">Sau</button></div>
+    </div>
+  );
+}
+
+type CrudActionPanelProps = {
+  activePanel: CrudPanel;
+  setActivePanel: (panel: CrudPanel) => void;
+  fields: FieldDef[];
+  createValues: Record<string, string>;
+  setCreateValues: Dispatch<SetStateAction<Record<string, string>>>;
+  updateValues: Record<string, string>;
+  setUpdateValues: Dispatch<SetStateAction<Record<string, string>>>;
+  fkOptions: Record<string, SelectOption[]>;
+  api: ApiModule;
+  actionLoading: boolean;
+  runAction: (handler: () => Promise<unknown>, refreshList?: boolean) => Promise<void>;
+  buildPayload: (source: Record<string, string>) => Record<string, unknown>;
+  detailId: string;
+  setDetailId: (value: string) => void;
+  updateId: string;
+  setUpdateId: (value: string) => void;
+  deleteId: string;
+  setDeleteId: (value: string) => void;
+  resultText: string;
+};
+
+function CrudActionPanel({
+  activePanel,
+  setActivePanel,
+  fields,
+  createValues,
+  setCreateValues,
+  updateValues,
+  setUpdateValues,
+  fkOptions,
+  api,
+  actionLoading,
+  runAction,
+  buildPayload,
+  detailId,
+  setDetailId,
+  updateId,
+  setUpdateId,
+  deleteId,
+  setDeleteId,
+  resultText,
+}: CrudActionPanelProps) {
+  if (!activePanel) return null;
+  return (
+    <>
+      <section className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <p className="text-sm font-bold">{activePanel === "create" ? "Tạo mới" : activePanel === "detail" ? "Xem theo mã" : activePanel === "update" ? "Cập nhật" : "Xóa"}</p>
+          <button onClick={() => setActivePanel(null)} className="rounded border border-slate-300 px-3 py-1 text-sm">Đóng</button>
+        </div>
+
+        {activePanel === "create" ? (
+          <>
+            <DataForm fields={fields} values={createValues} fkOptions={fkOptions} onChange={(name, value) => setCreateValues((p) => ({ ...p, [name]: value }))} />
+            <button onClick={() => void runAction(() => { if (!api.create) throw new Error("Module không hỗ trợ tạo mới"); return api.create(buildPayload(createValues)); }, true)} disabled={actionLoading} className="mt-3 rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white">Tạo</button>
+          </>
+        ) : null}
+
+        {activePanel === "detail" ? (
+          <div className="flex gap-2">
+            <input value={detailId} onChange={(e) => setDetailId(e.target.value)} placeholder="Nhập mã" className="flex-1 rounded-lg border border-slate-300 px-3 py-2" />
+            <button onClick={() => void runAction(() => { if (!api.findById) throw new Error("Module không hỗ trợ xem chi tiết"); if (!detailId.trim()) throw new Error("Vui lòng nhập mã"); return api.findById(detailId.trim()); })} disabled={actionLoading} className="rounded-lg border border-slate-300 px-4 py-2">Xem</button>
+          </div>
+        ) : null}
+
+        {activePanel === "update" ? (
+          <>
+            <input value={updateId} onChange={(e) => setUpdateId(e.target.value)} placeholder="Mã bản ghi" className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+            <div className="mt-3">
+              <DataForm fields={fields} values={updateValues} fkOptions={fkOptions} onChange={(name, value) => setUpdateValues((p) => ({ ...p, [name]: value }))} />
+            </div>
+            <button onClick={() => void runAction(() => { if (!api.update) throw new Error("Module không hỗ trợ cập nhật"); if (!updateId.trim()) throw new Error("Vui lòng nhập mã"); return api.update(updateId.trim(), buildPayload(updateValues)); }, true)} disabled={actionLoading} className="mt-3 rounded-lg border border-slate-300 px-4 py-2">Lưu</button>
+          </>
+        ) : null}
+
+        {activePanel === "delete" ? (
+          <div className="flex gap-2">
+            <input value={deleteId} onChange={(e) => setDeleteId(e.target.value)} placeholder="Mã bản ghi" className="flex-1 rounded-lg border border-slate-300 px-3 py-2" />
+            <button onClick={() => void runAction(() => { if (!api.delete) throw new Error("Module không hỗ trợ xóa"); if (!deleteId.trim()) throw new Error("Vui lòng nhập mã"); return api.delete(deleteId.trim()); }, true)} disabled={actionLoading} className="rounded-lg border border-rose-300 px-4 py-2 text-rose-700">Xóa</button>
+          </div>
+        ) : null}
+      </section>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-700">{resultText}</div>
+    </>
+  );
+}
+
 export default function AdminModuleCrudSection({
   title,
   modules,
@@ -136,6 +360,8 @@ export default function AdminModuleCrudSection({
   basePath,
 }: AdminModuleCrudSectionProps) {
   const navigate = useNavigate();
+  const usersApi = useUsersApi();
+  const tripsApi = useTripsApi();
   const [moduleKey, setModuleKey] = useState(modules[0]?.key ?? "");
   const [searchText, setSearchText] = useState("");
   const [page, setPage] = useState(1);
@@ -158,6 +384,13 @@ export default function AdminModuleCrudSection({
 
   const selectedModule = useMemo(() => modules.find((item) => item.key === moduleKey) ?? modules[0], [moduleKey, modules]);
   const fields = useMemo(() => moduleFields[selectedModule?.key ?? ""] ?? [], [selectedModule?.key]);
+  const fkLabelMaps = useMemo(() => {
+    const maps: Record<string, Map<string, string>> = {};
+    for (const [fieldName, options] of Object.entries(fkOptions)) {
+      maps[fieldName] = new Map(options.map((option) => [option.value, option.label]));
+    }
+    return maps;
+  }, [fkOptions]);
 
   const query = useMemo(() => ({ page, limit, ...(searchText.trim() ? { search: searchText.trim() } : {}) }), [page, limit, searchText]);
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -200,22 +433,44 @@ export default function AdminModuleCrudSection({
       const nextOptions: Record<string, SelectOption[]> = {};
       try {
         if (needsUser) {
-          const usersModule = modules.find((moduleItem) => moduleItem.key === "users");
-          if (usersModule) {
-            const users = extractDataArray(await usersModule.api.findAll({ page: 1, limit: 100 }));
-            const userOptions = users.map((user) => ({ value: String(user.id ?? ""), label: `${String(user.full_name ?? "Không tên")} (${String(user.email ?? "")})` }));
-            if (fieldNames.has("user_id")) nextOptions.user_id = userOptions;
-            if (fieldNames.has("reporter_user_id")) nextOptions.reporter_user_id = userOptions;
-            if (fieldNames.has("target_user_id")) nextOptions.target_user_id = userOptions;
+          const users = extractDataArray(await usersApi.findAll({ page: 1, limit: 100 }));
+          const userOptions = users.map((user) => ({ value: String(user.id ?? ""), label: `${String(user.full_name ?? "Không tên")} (${String(user.email ?? "")})` }));
+          const knownIds = new Set(userOptions.map((option) => option.value));
+          const missingIds = new Set<string>();
+          const userKeys = ["user_id", "reporter_user_id", "target_user_id", "user_name", "reporter_user_name", "target_user_name"];
+
+          for (const row of rows) {
+            for (const key of userKeys) {
+              const rawId = String(row[key] ?? "").trim();
+              if (rawId && !knownIds.has(rawId)) missingIds.add(rawId);
+            }
           }
+
+          for (const missingId of missingIds) {
+            try {
+              const userRes = await usersApi.findById?.(missingId);
+              const user = (userRes as ApiResponse<Record<string, unknown>>)?.data;
+              if (!user) continue;
+              const option = {
+                value: String(user.id ?? missingId),
+                label: `${String(user.full_name ?? "Không tên")} (${String(user.email ?? "")})`,
+              };
+              if (!knownIds.has(option.value)) {
+                userOptions.push(option);
+                knownIds.add(option.value);
+              }
+            } catch {
+              // ignore missing/invalid ids
+            }
+          }
+          if (fieldNames.has("user_id")) nextOptions.user_id = userOptions;
+          if (fieldNames.has("reporter_user_id")) nextOptions.reporter_user_id = userOptions;
+          if (fieldNames.has("target_user_id")) nextOptions.target_user_id = userOptions;
         }
 
         if (needsTrip) {
-          const tripsModule = modules.find((moduleItem) => moduleItem.key === "trips");
-          if (tripsModule) {
-            const trips = extractDataArray(await tripsModule.api.findAll({ page: 1, limit: 100 }));
-            nextOptions.trip_id = trips.map((trip) => ({ value: String(trip.id ?? ""), label: `${String(trip.title ?? "Không tiêu đề")} - ${String(trip.destination ?? "")}` }));
-          }
+          const trips = extractDataArray(await tripsApi.findAll({ page: 1, limit: 100 }));
+          nextOptions.trip_id = trips.map((trip) => ({ value: String(trip.id ?? ""), label: `${String(trip.title ?? "Không tiêu đề")} - ${String(trip.destination ?? "")}` }));
         }
       } catch {
         // ignore
@@ -224,7 +479,7 @@ export default function AdminModuleCrudSection({
     };
 
     void loadFkOptions();
-  }, [fields, modules]);
+  }, [fields, rows, tripsApi, usersApi]);
 
   if (!selectedModule) return null;
   const api = selectedModule.api;
@@ -285,82 +540,61 @@ export default function AdminModuleCrudSection({
         </div>
       ) : null}
 
-      <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2 lg:grid-cols-6">
-        <select value={moduleKey} onChange={(e) => { setModuleKey(e.target.value); setPage(1); setActivePanel(null); resetPanelValues(); }} className="rounded-lg border border-slate-300 px-3 py-2 lg:col-span-2">
-          {modules.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
-        </select>
-        <input value={searchText} onChange={(e) => { setSearchText(e.target.value); setPage(1); }} placeholder="Tìm kiếm dữ liệu" className="rounded-lg border border-slate-300 px-3 py-2 lg:col-span-2" />
-        <select value={limit} onChange={(e) => { setLimit(Math.max(1, Number(e.target.value) || 10)); setPage(1); }} className="rounded-lg border border-slate-300 px-3 py-2">
-          <option value={10}>10 / trang</option><option value={20}>20 / trang</option><option value={50}>50 / trang</option>
-        </select>
-        <button onClick={() => void loadList()} disabled={readLoading} className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white">{readLoading ? "Đang tải..." : "Làm mới"}</button>
-        {showCrudForms ? (
-          <button onClick={() => { setActivePanel("create"); setResultText("Sẵn sàng thao tác"); }} className="rounded-lg bg-teal-700 px-3 py-2 text-sm font-semibold text-white">+ Tạo mới</button>
-        ) : null}
-      </div>
+      <ModuleToolbar
+        modules={modules}
+        moduleKey={moduleKey}
+        setModuleKey={setModuleKey}
+        searchText={searchText}
+        setSearchText={setSearchText}
+        limit={limit}
+        setLimit={setLimit}
+        setPage={setPage}
+        setActivePanel={setActivePanel}
+        setResultText={setResultText}
+        resetPanelValues={resetPanelValues}
+        loadList={loadList}
+        readLoading={readLoading}
+        showCrudForms={showCrudForms}
+      />
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-        <table className="min-w-full text-sm">
-          <thead className="bg-slate-100 text-left text-slate-700"><tr>{tableCols.map((col) => <th key={col} className="px-4 py-3">{col}</th>)}<th className="px-4 py-3">Thao tác</th></tr></thead>
-          <tbody>
-            {rows.length === 0 ? <tr><td colSpan={tableCols.length + 1} className="px-4 py-8 text-center text-slate-500">Không có dữ liệu</td></tr> : rows.map((row, idx) => (
-              <tr key={idx} className="border-t border-slate-200">{tableCols.map((col) => {
-                const rawValue = String(row[col] ?? "");
-                const displayValue = looksLikeHtml(rawValue) ? toPlainText(rawValue) : rawValue;
-                return <td key={col} className="px-4 py-3">{displayValue}</td>;
-              })}<td className="px-4 py-3"><div className="flex gap-2"><button onClick={() => { const id = String(row.id ?? ""); if (!id) return; if (basePath) { navigate(`${basePath}/${moduleKey}/${id}/edit`); return; } applyRow(row); setActivePanel("update"); setResultText("Sẵn sàng thao tác"); }} className="rounded border border-slate-300 px-2 py-1">Sửa</button><button onClick={() => { const id = String(row.id ?? ""); if (!id) return; if (basePath) { navigate(`${basePath}/${moduleKey}/${id}`); return; } setDetailId(id); setActivePanel("detail"); setResultText("Sẵn sàng thao tác"); }} className="rounded border border-slate-300 px-2 py-1">Xem</button><button onClick={() => { setDeleteId(String(row.id ?? "")); setActivePanel("delete"); setResultText("Sẵn sàng thao tác"); }} className="rounded border border-rose-300 px-2 py-1 text-rose-700">Xóa</button></div></td></tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ModuleDataTable
+        rows={rows}
+        tableCols={tableCols}
+        fkLabelMaps={fkLabelMaps}
+        basePath={basePath}
+        moduleKey={moduleKey}
+        navigate={navigate}
+        applyRow={applyRow}
+        setActivePanel={setActivePanel}
+        setResultText={setResultText}
+        setDetailId={setDetailId}
+        setDeleteId={setDeleteId}
+      />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm">
-        <p>Hiển thị {total === 0 ? 0 : (page - 1) * limit + 1}-{total === 0 ? 0 : Math.min(page * limit, total)} trên tổng {total}</p>
-        <div className="flex items-center gap-2"><button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="rounded border border-slate-300 px-3 py-1 disabled:opacity-40">Trước</button><span>{page}/{totalPages}</span><button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="rounded border border-slate-300 px-3 py-1 disabled:opacity-40">Sau</button></div>
-      </div>
+      <PaginationBar total={total} page={page} limit={limit} totalPages={totalPages} setPage={setPage} />
 
-      {showCrudForms && activePanel ? (
-        <>
-          <section className="rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <p className="text-sm font-bold">{activePanel === "create" ? "Tạo mới" : activePanel === "detail" ? "Xem theo mã" : activePanel === "update" ? "Cập nhật" : "Xóa"}</p>
-              <button onClick={() => setActivePanel(null)} className="rounded border border-slate-300 px-3 py-1 text-sm">Đóng</button>
-            </div>
-
-            {activePanel === "create" ? (
-              <>
-                <DataForm fields={fields} values={createValues} fkOptions={fkOptions} onChange={(name, value) => setCreateValues((p) => ({ ...p, [name]: value }))} />
-                <button onClick={() => runAction(() => { if (!api.create) throw new Error("Module không hỗ trợ tạo mới"); return api.create(buildPayload(createValues)); }, true)} disabled={actionLoading} className="mt-3 rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white">Tạo</button>
-              </>
-            ) : null}
-
-            {activePanel === "detail" ? (
-              <div className="flex gap-2">
-                <input value={detailId} onChange={(e) => setDetailId(e.target.value)} placeholder="Nhập mã" className="flex-1 rounded-lg border border-slate-300 px-3 py-2" />
-                <button onClick={() => runAction(() => { if (!api.findById) throw new Error("Module không hỗ trợ xem chi tiết"); if (!detailId.trim()) throw new Error("Vui lòng nhập mã"); return api.findById(detailId.trim()); })} disabled={actionLoading} className="rounded-lg border border-slate-300 px-4 py-2">Xem</button>
-              </div>
-            ) : null}
-
-            {activePanel === "update" ? (
-              <>
-                <input value={updateId} onChange={(e) => setUpdateId(e.target.value)} placeholder="Mã bản ghi" className="w-full rounded-lg border border-slate-300 px-3 py-2" />
-                <div className="mt-3">
-                  <DataForm fields={fields} values={updateValues} fkOptions={fkOptions} onChange={(name, value) => setUpdateValues((p) => ({ ...p, [name]: value }))} />
-                </div>
-                <button onClick={() => runAction(() => { if (!api.update) throw new Error("Module không hỗ trợ cập nhật"); if (!updateId.trim()) throw new Error("Vui lòng nhập mã"); return api.update(updateId.trim(), buildPayload(updateValues)); }, true)} disabled={actionLoading} className="mt-3 rounded-lg border border-slate-300 px-4 py-2">Lưu</button>
-              </>
-            ) : null}
-
-            {activePanel === "delete" ? (
-              <div className="flex gap-2">
-                <input value={deleteId} onChange={(e) => setDeleteId(e.target.value)} placeholder="Mã bản ghi" className="flex-1 rounded-lg border border-slate-300 px-3 py-2" />
-                <button onClick={() => runAction(() => { if (!api.delete) throw new Error("Module không hỗ trợ xóa"); if (!deleteId.trim()) throw new Error("Vui lòng nhập mã"); return api.delete(deleteId.trim()); }, true)} disabled={actionLoading} className="rounded-lg border border-rose-300 px-4 py-2 text-rose-700">Xóa</button>
-              </div>
-            ) : null}
-          </section>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-700">{resultText}</div>
-        </>
+      {showCrudForms ? (
+        <CrudActionPanel
+          activePanel={activePanel}
+          setActivePanel={setActivePanel}
+          fields={fields}
+          createValues={createValues}
+          setCreateValues={setCreateValues}
+          updateValues={updateValues}
+          setUpdateValues={setUpdateValues}
+          fkOptions={fkOptions}
+          api={api}
+          actionLoading={actionLoading}
+          runAction={runAction}
+          buildPayload={buildPayload}
+          detailId={detailId}
+          setDetailId={setDetailId}
+          updateId={updateId}
+          setUpdateId={setUpdateId}
+          deleteId={deleteId}
+          setDeleteId={setDeleteId}
+          resultText={resultText}
+        />
       ) : null}
     </section>
   );
